@@ -45,7 +45,6 @@ func Postman(ctx context.Context,
 			return
 
 		case <-time.After(1 * time.Second):
-			time.Sleep(1 * time.Second)
 			// fmt.Println("Я почтальон номер:", n, "Взял письмо")
 		}
 

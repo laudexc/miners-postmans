@@ -16,7 +16,7 @@ func main() {
 	var coal atomic.Int64
 
 	// Количество воркеров
-	numOfWorkers := 1000
+	numOfWorkers := 10
 
 	// Хранилище писем
 	mtx := sync.Mutex{}
@@ -30,14 +30,14 @@ func main() {
 	// Через 3 секунды мы завершим рабочий день шахтёров
 	go func() {
 		time.Sleep(3 * time.Second)
-		fmt.Println("--->>> Рабочий день шахтёров окончен!")
+		fmt.Println("------------>>> Рабочий день шахтёров окончен!")
 		minerCancel()
 	}()
 
 	// Через 6 секунд мы завершим рабочий день почтальонов
 	go func() {
 		time.Sleep(6 * time.Second)
-		fmt.Println("--->>> Рабочий день почтальонов окончен!")
+		fmt.Println("------------>>> Рабочий день почтальонов окончен!")
 		postmanCancel()
 	}()
 
