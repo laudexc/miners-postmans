@@ -15,6 +15,9 @@ func main() {
 	// Хранилище угля
 	var coal atomic.Int64
 
+	// Количество воркеров
+	numOfWorkers := 1000
+
 	// Хранилище писем
 	mtx := sync.Mutex{}
 	var mails []string
@@ -38,14 +41,16 @@ func main() {
 		postmanCancel()
 	}()
 
-	// Запускаем 2-х шахтaёров, получаем пункт передачи угля
-	coalTransferPoint := miner.MinerPool(minerContext, 1000)
-	// Запускаем 2-х почтальонов, получаем пункт передачи писем
-	mailTransferPoint := postman.PostmanPool(postmanContext, 1000)
+	// Запускаем шахтёров, получаем пункт передачи угля
+	coalTransferPoint := make(<-chan int, numOfWorkers)
+	coalTransferPoint = miner.MinerPool(minerContext, numOfWorkers)
+
+	// Запускаем почтальонов, получаем пункт передачи писем
+	mailTransferPoint := make(<-chan string, numOfWorkers)
+	mailTransferPoint = postman.PostmanPool(postmanContext, numOfWorkers)
 
 	// Засекаем время выполнения всей работы
 	initTime := time.Now()
-
 	wg := &sync.WaitGroup{}
 
 	// instead
@@ -63,7 +68,6 @@ func main() {
 	wg.Go(func() {
 		for v := range coalTransferPoint {
 			coal.Add(int64(v))
-			time.Sleep(1 * time.Second)
 		}
 	})
 
@@ -73,8 +77,6 @@ func main() {
 			mtx.Lock()
 			mails = append(mails, v)
 			mtx.Unlock()
-
-			time.Sleep(1 * time.Second)
 		}
 	})
 
