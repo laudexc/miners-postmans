@@ -1,0 +1,91 @@
+﻿package main
+
+import (
+	"context"
+	"fmt"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"edu/internal/miner"
+	"edu/internal/postman"
+)
+
+func main() {
+	// Хранилище угля
+	var coal atomic.Int64
+
+	// Хранилище писем
+	mtx := sync.Mutex{}
+	var mails []string
+
+	// Создаём отдельные контексты для шахтёров и почтальонов
+	// Для возможности отдельно завершать шахтёров и отдельно завершать почтальонов
+	minerContext, minerCancel := context.WithCancel(context.Background())
+	postmanContext, postmanCancel := context.WithCancel(context.Background())
+
+	// Через 3 секунды мы завершим рабочий день шахтёров
+	go func() {
+		time.Sleep(3 * time.Second)
+		fmt.Println("--->>> Рабочий день шахтёров окончен!")
+		minerCancel()
+	}()
+
+	// Через 6 секунд мы завершим рабочий день почтальонов
+	go func() {
+		time.Sleep(6 * time.Second)
+		fmt.Println("--->>> Рабочий день почтальонов окончен!")
+		postmanCancel()
+	}()
+
+	// Запускаем 2-х шахтaёров, получаем пункт передачи угля
+	coalTransferPoint := miner.MinerPool(minerContext, 1000)
+	// Запускаем 2-х почтальонов, получаем пункт передачи писем
+	mailTransferPoint := postman.PostmanPool(postmanContext, 1000)
+
+	// Засекаем время выполнения всей работы
+	initTime := time.Now()
+
+	wg := &sync.WaitGroup{}
+
+	// instead
+	// wg.Add(1)
+	// go func() {
+	// 	defer wg.Done()
+	// 	for v := range coalTransferPoint {
+	// 		coal.Add(int64(v))
+	// 		time.Sleep(1 * time.Second)
+	// 	}
+	// }()
+
+	// Use wg.Go
+	// В отдельной горутине вычитываем входящий уголь
+	wg.Go(func() {
+		for v := range coalTransferPoint {
+			coal.Add(int64(v))
+			time.Sleep(1 * time.Second)
+		}
+	})
+
+	// В отдельной горутине вычитываем входящие письма
+	wg.Go(func() {
+		for v := range mailTransferPoint {
+			mtx.Lock()
+			mails = append(mails, v)
+			mtx.Unlock()
+
+			time.Sleep(1 * time.Second)
+		}
+	})
+
+	wg.Wait()
+
+	// Далее выводим результирующие значения
+	fmt.Println("Суммарно добытый уголь:", coal.Load())
+
+	mtx.Lock()
+	fmt.Println("Суммарное количество полученных писем:", len(mails))
+	mtx.Unlock()
+
+	fmt.Println("Затраченное время:", time.Since(initTime))
+}
