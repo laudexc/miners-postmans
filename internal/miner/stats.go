@@ -71,7 +71,7 @@ func (s *Stats) Snapshot() Snapshot {
 
 	workers := make(map[int]WorkerStats, len(s.workers))
 	for workerID, stats := range s.workers {
-		workers[workerID] = stats
+		workers[workerID] = stats // no replace with maps.Copy
 	}
 
 	return Snapshot{
