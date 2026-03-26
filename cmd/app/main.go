@@ -18,7 +18,7 @@ func main() {
 	var coal atomic.Int64
 
 	// количество воркеров в каждой группе
-	numOfWorkers := 100
+	numOfWorkers := 1
 
 	// квота определяет, сколько задач и какого объёма выдаётся воркерам за смену
 	baseQuota := generator.Quota{
@@ -92,12 +92,7 @@ func main() {
 		quota.DeliveryJobsPerPostman,
 		quota.BaseMiningAmount,
 	)
-	fmt.Printf("суммарно добыто угля: %d\n\n", coal.Load())
 	fmt.Printf("---> статы шахтёров: всего добыто = %d, неуспешных задач = %d\n\n", minerSnapshot.TotalMined, minerSnapshot.FailedAttempts)
-
-	mtx.Lock()
-	fmt.Printf("суммарно получено писем: %d\n\n", len(mails))
-	mtx.Unlock()
 	fmt.Printf("---> статы почтальонов: доставлено = %d, недоставлено = %d\n\n", postmanSnapshot.TotalDelivered, postmanSnapshot.TotalUndelivered)
 
 	// ставки для расчёта зарплаты задаются отдельно, чтобы их можно было легко менять
