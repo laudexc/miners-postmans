@@ -5,54 +5,61 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"edu/internal/job"
 )
 
-// цикл одного шахтёра с записью результата каждой итерации в общие stats
+// цикл одного шахтёра, который обрабатывает полученный список задач
 func Miner(
 	ctx context.Context,
 	wg *sync.WaitGroup,
 	transferPoint chan<- int,
-	n int,
-	power int,
+	minerID int,
+	jobs []job.MiningJob,
 	stats *Stats,
 ) {
 	defer wg.Done()
 
-	for {
-		fmt.Println("Шахтёр №", n, "начал добывать уголь")
+	for _, miningJob := range jobs {
+		fmt.Printf("шахтёр №%d начал задачу добычи #%d\n", minerID, miningJob.ID)
 
 		select {
 		case <-ctx.Done():
-			// смена завершилась до окончания добычи, считаем это неуспешной попыткой
-			stats.RecordFailedAttempt(n)
-			fmt.Printf("Рабочий день шахтёра №%d закончен!\n", n)
+			// если смена завершилась до добычи, считаем задачу неуспешной
+			stats.RecordFailedAttempt(minerID)
+			fmt.Printf("рабочий день шахтёра №%d закончен\n", minerID)
 			return
 		case <-time.After(1 * time.Second):
-			fmt.Println("Шахтёр №", n, "добыл уголь:", power)
+			fmt.Printf("шахтёр №%d добыл уголь по задаче #%d: %d\n", minerID, miningJob.ID, miningJob.Amount)
 		}
 
 		select {
 		case <-ctx.Done():
-			// смена завершилась до передачи угля в канал, это тоже неуспешная попытка
-			stats.RecordFailedAttempt(n)
-			fmt.Printf("Рабочий день шахтёра №%d закончен!\n", n)
+			// если смена завершилась до передачи в канал, задача тоже неуспешная
+			stats.RecordFailedAttempt(minerID)
+			fmt.Printf("рабочий день шахтёра №%d закончен\n", minerID)
 			return
-		case transferPoint <- power:
-			// уголь успешно передан в канал, учитываем как успешную добычу
-			stats.RecordMined(n, power)
-			fmt.Println("Шахтёр №", n, "передал уголь:", power)
+		case transferPoint <- miningJob.Amount:
+			// успешная передача результата задачи в общий канал
+			stats.RecordMined(minerID, miningJob.Amount)
+			fmt.Printf("шахтёр №%d передал уголь по задаче #%d: %d\n", minerID, miningJob.ID, miningJob.Amount)
 		}
 	}
 }
 
-// запускает всех шахтёров с общими stats и закрывает канал после остановки всех воркеров
-func MinerPool(ctx context.Context, minerCount int, stats *Stats) <-chan int {
+// запускает всех шахтёров и отдаёт каждому его список задач из генератора квот
+func MinerPool(
+	ctx context.Context,
+	minerCount int,
+	jobsByMiner map[int][]job.MiningJob,
+	stats *Stats,
+) <-chan int {
 	coalTransferPoint := make(chan int)
 	wg := &sync.WaitGroup{}
 
-	for i := 1; i <= minerCount; i++ {
+	for minerID := 1; minerID <= minerCount; minerID++ {
 		wg.Add(1)
-		go Miner(ctx, wg, coalTransferPoint, i, i*10, stats)
+		go Miner(ctx, wg, coalTransferPoint, minerID, jobsByMiner[minerID], stats)
 	}
 
 	go func() {

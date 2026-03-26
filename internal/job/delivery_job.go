@@ -1,7 +1,10 @@
 package job
 
+// описывает одну задачу доставки письма для конкретного почтальона
 type DeliveryJob struct {
-	ID int
-	Address string
-	Priority int
+	ID        int
+	PostmanID int
+	MailText  string
+	Address   string
+	Priority  int
 }
