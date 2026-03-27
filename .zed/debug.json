@@ -1,9 +1,0 @@
-[
-  {
-    "label": "Debug Go",
-    "adapter": "delve",
-    "request": "launch",
-    "mode": "debug",
-    "program": ".",
-  },
-]
